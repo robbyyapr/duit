@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { LOCKSCREEN_PIN, LOCKSCREEN_PASSWORD } from '../constants';
 import { Button } from './ui/Button';
@@ -29,7 +28,7 @@ export const Lockscreen: React.FC<LockscreenProps> = ({ onUnlock }) => {
   return (
     <div className="fixed inset-0 bg-light-bg dark:bg-dark-bg z-50 flex flex-col items-center justify-center p-8">
         <div className="w-full max-w-sm text-center">
-            <h1 className="text-3xl font-bold mb-2">duit</h1>
+            <h1 className="text-6xl font-bold mb-2 font-[Brush_Script_MT,cursive]">duit</h1>
             <p className="mb-8 text-light-text dark:text-dark-text">Aplikasi Terkunci</p>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <input

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useIdle, useToggle } from 'react-use';
 import { Header } from './components/Header';
@@ -6,10 +5,14 @@ import { Dashboard } from './components/Dashboard';
 import { TransactionModal } from './components/TransactionModal';
 import { AccountsModal } from './components/AccountsModal';
 import { SettingsModal } from './components/SettingsModal';
+import { DebtModal } from './components/DebtModal';
+import { BillsModal } from './components/BillsModal';
+import { ZakatModal } from './components/ZakatModal';
+import { BudgetModal } from './components/BudgetModal';
 import { Lockscreen } from './components/Lockscreen';
 import { AppContext } from './contexts/AppContext';
 import dbService from './services/dbService';
-import type { Account, Transaction, ModalState, Theme } from './types';
+import type { Account, Transaction, ModalState, Theme, Debt, Bill, Zakat, Budget } from './types';
 import { THEME_KEY, IDLE_TIMEOUT, DEFAULT_CATEGORIES } from './constants';
 
 const App: React.FC = () => {
@@ -23,6 +26,11 @@ const App: React.FC = () => {
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [zakat, setZakat] = useState<Zakat[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [modal, setModal] = useState<ModalState>({ type: null, data: null });
   const [categories] = useState<string[]>(DEFAULT_CATEGORIES);
@@ -44,14 +52,25 @@ const App: React.FC = () => {
 
   const refreshData = useCallback(async () => {
     try {
-      const [accs, txs] = await Promise.all([
+      setIsLoading(true);
+      const [accs, txs, dbs, bls, zks, bgs] = await Promise.all([
         dbService.accounts.list(),
-        dbService.transactions.list()
+        dbService.transactions.list(),
+        dbService.debts.list(),
+        dbService.bills.list(),
+        dbService.zakat.list(),
+        dbService.budgets.list(),
       ]);
       setAccounts(accs);
       setTransactions(txs);
+      setDebts(dbs);
+      setBills(bls);
+      setZakat(zks);
+      setBudgets(bgs);
     } catch (error) {
       console.error("Failed to refresh data:", error);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -62,8 +81,6 @@ const App: React.FC = () => {
         await refreshData();
       } catch (error) {
         console.error("Database initialization failed:", error);
-      } finally {
-        setIsLoading(false);
       }
     };
     initDB();
@@ -99,6 +116,10 @@ const App: React.FC = () => {
       toggleTheme,
       accounts,
       transactions,
+      debts,
+      bills,
+      zakat,
+      budgets,
       categories,
       isLoading,
       refreshData,
@@ -113,6 +134,10 @@ const App: React.FC = () => {
         {modal.type === 'transaction' && <TransactionModal isOpen={true} onClose={closeModal} transactionData={modal.data as Transaction | null} />}
         {modal.type === 'accounts' && <AccountsModal isOpen={true} onClose={closeModal} />}
         {modal.type === 'settings' && <SettingsModal isOpen={true} onClose={closeModal} />}
+        {modal.type === 'debt' && <DebtModal isOpen={true} onClose={closeModal} />}
+        {modal.type === 'bills' && <BillsModal isOpen={true} onClose={closeModal} />}
+        {modal.type === 'zakat' && <ZakatModal isOpen={true} onClose={closeModal} />}
+        {modal.type === 'budget' && <BudgetModal isOpen={true} onClose={closeModal} />}
       </div>
     </AppContext.Provider>
   );

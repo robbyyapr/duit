@@ -33,21 +33,28 @@ const parseReceipt = async (ocrText: string): Promise<ParsedReceipt> => {
   }
   
   const prompt = `
-    You are an intelligent receipt parsing engine specializing in Indonesian receipts.
-    Analyze the following OCR text from a receipt and extract the merchant name, date, time, and total amount.
-    Provide a confidence score (0.0 to 1.0) for each extracted field.
+    You are an expert financial assistant specializing in parsing Indonesian retail and service receipts.
+    Analyze the provided OCR text and extract the merchant name, date, time, and the final total amount.
+    Provide a confidence score from 0.0 (no confidence) to 1.0 (very high confidence) for each field.
 
-    **Instructions & Heuristics:**
-    1.  **Merchant Name**: Usually located at the top of the receipt. It might be a well-known brand (e.g., Indomaret, Alfamart, Gojek, Grab, McDonald's) or a local store name. Confidence should be high if it's a known brand.
-    2.  **Date**: Look for patterns like DD/MM/YYYY, DD-MM-YY, YYYY.MM.DD. Always convert the final output to **YYYY-MM-DD** format. If the year is ambiguous (e.g., '24'), assume the current century (2024). Confidence depends on how clear the date format is.
-    3.  **Time**: Look for patterns like HH:mm or HH.mm. The format should be **HH:mm**.
-    4.  **Total Amount**: This is the most critical field. Look for keywords like "TOTAL", "GRAND TOTAL", "JUMLAH", "TAGIHAN", "TUNAI". It's often the largest numerical value on the receipt. The currency is Indonesian Rupiah (IDR). Ignore thousands separators (e.g., '.', ',') and currency symbols ('Rp'). For example, "Rp 33.500" should be parsed as 33500.
-    5.  **Confidence Score**: Base your confidence score on the clarity of the OCR text and the presence of clear keywords. For example, if you see "TOTAL Rp 50.000", the amount confidence should be very high (e.g., 0.98). If you are guessing based on the largest number without a keyword, the confidence should be lower (e.g., 0.7).
-    6.  **Null Values**: If you cannot find a value for any field, set its "value" to null and "confidence" to 0.0.
+    **CRITICAL INSTRUCTIONS:**
+    1.  **Merchant Name**: Usually at the top. Common names: Indomaret, Alfamart, Gojek, Grab, McDonald's, KFC, Tokopedia, Shopee, Circle K, etc. If no clear name is found, use the most likely store title. If totally unclear, return null for the value.
+    2.  **Date**: Look for formats like DD/MM/YYYY, DD-MM-YY, YYYY.MM.DD, DD MMM YYYY. Always convert the output to **YYYY-MM-DD**. If no date is found, you should return null for the value.
+    3.  **Time**: Find HH:mm or HH.mm patterns. Output must be **HH:mm**. If no time is found, return null for the value.
+    4.  **Total Amount**: This is the most important field. Find the FINAL amount the customer paid.
+        *   Prioritize keywords: "TOTAL", "GRAND TOTAL", "JUMLAH", "TAGIHAN", "TOTAL BAYAR".
+        *   The total is almost always the largest number and located at the bottom of the receipt.
+        *   IGNORE any sub-totals, item prices, or change ("KEMBALI") amounts.
+        *   IGNORE thousands separators (like '.' or ',') and currency symbols ('Rp'). For example, "Rp 123.456" must be parsed as 123456.
+        *   If there are "DISKON" (discount) or "PPN" (tax) lines, ensure you are extracting the FINAL total *after* all calculations. If you see 'CASH' and 'CHANGE'/'KEMBALI', the total is the value before them.
+    5.  **Confidence Score Rules**:
+        *   **High (0.9-1.0)**: The value is next to a clear keyword (e.g., "TOTAL Rp 50.000").
+        *   **Medium (0.6-0.8)**: The value is inferred from its position (e.g., largest number at the bottom) but lacks a strong keyword.
+        *   **Low (0.1-0.5)**: The value is a pure guess from ambiguous text.
+        *   **Zero (0.0)**: The value could not be determined at all, and the value is null.
+    6.  **Output Format**: Respond ONLY with a valid JSON object matching the schema. Do not add any text, explanations, or markdown formatting before or after the JSON. If a value cannot be found, the "value" field in the JSON should be null.
 
-    Respond ONLY with a valid JSON object matching the specified schema. Do not include any explanations or markdown formatting.
-
-    **OCR Text:**
+    **OCR Text to Analyze:**
     ---
     ${ocrText}
     ---
@@ -99,7 +106,7 @@ const parseReceipt = async (ocrText: string): Promise<ParsedReceipt> => {
         date: { value: null, confidence: 0 },
         time: { value: null, confidence: 0 },
         merchant: { value: null, confidence: 0 },
-        error: "Failed to parse receipt data from AI. Please check your network or try again."
+        error: "Gagal memproses struk. Gambar mungkin tidak jelas atau terjadi kesalahan jaringan. Silakan coba lagi atau masukkan data secara manual."
     };
   }
 };
