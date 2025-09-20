@@ -1,0 +1,7 @@
+{
+  "name": "duit-keuangan",
+  "description": "A personal finance ledger PWA with OCR capabilities for tracking income and expenses. It is designed to be mobile-first, work offline, and stores all data locally in the browser using IndexedDB.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

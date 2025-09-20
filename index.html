@@ -1,0 +1,68 @@
+
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>duit — catatan keuangan</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#f1f3f6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)" />
+
+    <!-- iOS PWA Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="duit" />
+    <link rel="apple-touch-icon" href="/assets/icons/icon-180.png" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: ['class', '[data-theme="dark"]'],
+        theme: {
+          extend: {
+            colors: {
+              'light-bg': '#e0e5ec',
+              'light-text': '#5a616d',
+              'dark-bg': '#2c2f36',
+              'dark-text': '#d1d5db',
+              'primary': '#4f46e5',
+            },
+            boxShadow: {
+              'neumorphic-light': '9px 9px 16px #a3b1c6, -9px -9px 16px #ffffff',
+              'neumorphic-light-inset': 'inset 9px 9px 16px #a3b1c6, inset -9px -9px 16px #ffffff',
+              'neumorphic-dark': '9px 9px 16px #24262b, -9px -9px 16px #343841',
+              'neumorphic-dark-inset': 'inset 9px 9px 16px #24262b, inset -9px -9px 16px #343841',
+            }
+          }
+        }
+      }
+    </script>
+    
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.20.0",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
+    "@heroicons/react/": "https://aistudiocdn.com/@heroicons/react@^2.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.2.1",
+    "idb": "https://aistudiocdn.com/idb@^8.0.3",
+    "react-use": "https://aistudiocdn.com/react-use@^17.6.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
