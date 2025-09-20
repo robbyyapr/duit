@@ -92,4 +92,7 @@ export interface AppContextType {
   refreshData: () => Promise<void>;
   openModal: (type: ModalState['type'], data?: ModalState['data']) => void;
   closeModal: () => void;
+  maskSensitive: boolean;
+  toggleMaskSensitive: () => void;
+  lockApp: (options?: { clearKey?: boolean }) => void;
 }

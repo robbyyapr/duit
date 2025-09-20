@@ -1,164 +1,117 @@
-import { openDB, type IDBPDatabase } from 'idb';
-import { DB_NAME, DB_VERSION, ACCOUNT_STORE, TRANSACTION_STORE, DEBT_STORE, BILL_STORE, ZAKAT_STORE, BUDGET_STORE } from '../constants';
+import { SecureStore } from './secureStore';
+import { ACCOUNT_STORE, TRANSACTION_STORE, DEBT_STORE, BILL_STORE, ZAKAT_STORE, BUDGET_STORE } from '../constants';
 import type { Account, Transaction, Debt, Bill, Zakat, Budget } from '../types';
 
-let db: IDBPDatabase;
-
 const init = async () => {
-  db = await openDB(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion) {
-      if (oldVersion < 1) {
-        if (!db.objectStoreNames.contains(ACCOUNT_STORE)) {
-          db.createObjectStore(ACCOUNT_STORE, { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains(TRANSACTION_STORE)) {
-          const store = db.createObjectStore(TRANSACTION_STORE, { keyPath: 'id' });
-          store.createIndex('accountId', 'accountId');
-          store.createIndex('date', 'date');
-        }
-      }
-      if (oldVersion < 2) {
-        if (!db.objectStoreNames.contains(DEBT_STORE)) {
-            db.createObjectStore(DEBT_STORE, { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains(BILL_STORE)) {
-            db.createObjectStore(BILL_STORE, { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains(ZAKAT_STORE)) {
-            const store = db.createObjectStore(ZAKAT_STORE, { keyPath: 'id' });
-            store.createIndex('isPaid', 'isPaid');
-        }
-      }
-      if (oldVersion < 3) {
-        if (!db.objectStoreNames.contains(BUDGET_STORE)) {
-          db.createObjectStore(BUDGET_STORE, { keyPath: 'id' });
-        }
-      }
-    },
-  });
+  await SecureStore.getDb();
 };
 
 const clearAllData = async () => {
-    const tx = db.transaction([ACCOUNT_STORE, TRANSACTION_STORE, DEBT_STORE, BILL_STORE, ZAKAT_STORE, BUDGET_STORE], 'readwrite');
-    await Promise.all([
-        tx.objectStore(ACCOUNT_STORE).clear(),
-        tx.objectStore(TRANSACTION_STORE).clear(),
-        tx.objectStore(DEBT_STORE).clear(),
-        tx.objectStore(BILL_STORE).clear(),
-        tx.objectStore(ZAKAT_STORE).clear(),
-        tx.objectStore(BUDGET_STORE).clear(),
-    ]);
-    await tx.done;
-}
+  await SecureStore.clearAll();
+};
 
 const accounts = {
   add: async (account: Account): Promise<Account> => {
-    await db.put(ACCOUNT_STORE, account);
+    await SecureStore.put<Account>(ACCOUNT_STORE, account);
     return account;
   },
   update: async (id: string, patch: Partial<Account>): Promise<Account> => {
-    const account = await db.get(ACCOUNT_STORE, id);
-    if (!account) throw new Error('Account not found');
-    const updatedAccount = { ...account, ...patch, updatedAt: new Date().toISOString() };
-    await db.put(ACCOUNT_STORE, updatedAccount);
-    return updatedAccount;
+    const existing = await SecureStore.get<Account>(ACCOUNT_STORE, id);
+    if (!existing) throw new Error('Account not found');
+    const updated: Account = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+    await SecureStore.put<Account>(ACCOUNT_STORE, updated);
+    return updated;
   },
   delete: async (id: string): Promise<void> => {
-    const tx = db.transaction([ACCOUNT_STORE, TRANSACTION_STORE], 'readwrite');
-    await tx.objectStore(ACCOUNT_STORE).delete(id);
-    let cursor = await tx.objectStore(TRANSACTION_STORE).index('accountId').openCursor(id);
-    while (cursor) {
-      await cursor.delete();
-      cursor = await cursor.continue();
-    }
-    await tx.done;
+    const txs = await SecureStore.list<Transaction>(TRANSACTION_STORE);
+    await Promise.all(
+      txs
+        .filter(tx => tx.accountId === id)
+        .map(tx => SecureStore.delete(TRANSACTION_STORE, tx.id))
+    );
+    await SecureStore.delete(ACCOUNT_STORE, id);
   },
-  list: (): Promise<Account[]> => db.getAll(ACCOUNT_STORE),
-  get: (id: string): Promise<Account | undefined> => db.get(ACCOUNT_STORE, id),
+  list: (): Promise<Account[]> => SecureStore.list<Account>(ACCOUNT_STORE),
+  get: (id: string): Promise<Account | undefined> => SecureStore.get<Account>(ACCOUNT_STORE, id),
 };
 
 const transactions = {
   add: async (transaction: Transaction): Promise<Transaction> => {
-    await db.put(TRANSACTION_STORE, transaction);
+    await SecureStore.put<Transaction>(TRANSACTION_STORE, transaction);
     return transaction;
   },
   update: async (id: string, patch: Partial<Transaction>): Promise<Transaction> => {
-    const transaction = await db.get(TRANSACTION_STORE, id);
-    if (!transaction) throw new Error('Transaction not found');
-    const updatedTransaction = { ...transaction, ...patch, updatedAt: new Date().toISOString() };
-    await db.put(TRANSACTION_STORE, updatedTransaction);
-    return updatedTransaction;
+    const existing = await SecureStore.get<Transaction>(TRANSACTION_STORE, id);
+    if (!existing) throw new Error('Transaction not found');
+    const updated: Transaction = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+    await SecureStore.put<Transaction>(TRANSACTION_STORE, updated);
+    return updated;
   },
-  delete: async (id: string): Promise<void> => db.delete(TRANSACTION_STORE, id),
-  list: (): Promise<Transaction[]> => db.getAll(TRANSACTION_STORE),
-  get: (id: string): Promise<Transaction | undefined> => db.get(TRANSACTION_STORE, id),
+  delete: async (id: string): Promise<void> => SecureStore.delete(TRANSACTION_STORE, id),
+  list: (): Promise<Transaction[]> => SecureStore.list<Transaction>(TRANSACTION_STORE),
+  get: (id: string): Promise<Transaction | undefined> => SecureStore.get<Transaction>(TRANSACTION_STORE, id),
 };
 
 const debts = {
   add: async (debt: Debt): Promise<Debt> => {
-    await db.put(DEBT_STORE, debt);
+    await SecureStore.put<Debt>(DEBT_STORE, debt);
     return debt;
   },
   update: async (id: string, patch: Partial<Debt>): Promise<Debt> => {
-    const debt = await db.get(DEBT_STORE, id);
-    if (!debt) throw new Error('Debt not found');
-    const updatedDebt = { ...debt, ...patch, updatedAt: new Date().toISOString() };
-    await db.put(DEBT_STORE, updatedDebt);
-    return updatedDebt;
+    const existing = await SecureStore.get<Debt>(DEBT_STORE, id);
+    if (!existing) throw new Error('Debt not found');
+    const updated: Debt = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+    await SecureStore.put<Debt>(DEBT_STORE, updated);
+    return updated;
   },
-  delete: async (id: string): Promise<void> => db.delete(DEBT_STORE, id),
-  list: (): Promise<Debt[]> => db.getAll(DEBT_STORE),
-  get: (id: string): Promise<Debt | undefined> => db.get(DEBT_STORE, id),
+  delete: async (id: string): Promise<void> => SecureStore.delete(DEBT_STORE, id),
+  list: (): Promise<Debt[]> => SecureStore.list<Debt>(DEBT_STORE),
+  get: (id: string): Promise<Debt | undefined> => SecureStore.get<Debt>(DEBT_STORE, id),
 };
 
 const bills = {
   add: async (bill: Bill): Promise<Bill> => {
-    await db.put(BILL_STORE, bill);
+    await SecureStore.put<Bill>(BILL_STORE, bill);
     return bill;
   },
   update: async (id: string, patch: Partial<Bill>): Promise<Bill> => {
-    const bill = await db.get(BILL_STORE, id);
-    if (!bill) throw new Error('Bill not found');
-    const updatedBill = { ...bill, ...patch, updatedAt: new Date().toISOString() };
-    await db.put(BILL_STORE, updatedBill);
-    return updatedBill;
+    const existing = await SecureStore.get<Bill>(BILL_STORE, id);
+    if (!existing) throw new Error('Bill not found');
+    const updated: Bill = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+    await SecureStore.put<Bill>(BILL_STORE, updated);
+    return updated;
   },
-  delete: async (id: string): Promise<void> => db.delete(BILL_STORE, id),
-  list: (): Promise<Bill[]> => db.getAll(BILL_STORE),
-  get: (id: string): Promise<Bill | undefined> => db.get(BILL_STORE, id),
+  delete: async (id: string): Promise<void> => SecureStore.delete(BILL_STORE, id),
+  list: (): Promise<Bill[]> => SecureStore.list<Bill>(BILL_STORE),
+  get: (id: string): Promise<Bill | undefined> => SecureStore.get<Bill>(BILL_STORE, id),
 };
 
 const zakat = {
   add: async (item: Zakat): Promise<Zakat> => {
-    await db.put(ZAKAT_STORE, item);
+    await SecureStore.put<Zakat>(ZAKAT_STORE, item);
     return item;
   },
-  list: (): Promise<Zakat[]> => db.getAll(ZAKAT_STORE),
+  list: (): Promise<Zakat[]> => SecureStore.list<Zakat>(ZAKAT_STORE),
   markAsPaid: async (ids: string[]): Promise<void> => {
-    const tx = db.transaction(ZAKAT_STORE, 'readwrite');
-    const store = tx.objectStore(ZAKAT_STORE);
-    const paidAt = new Date().toISOString();
-    await Promise.all(ids.map(async (id) => {
-      const item = await store.get(id);
-      if (item) {
-        item.isPaid = true;
-        item.paidAt = paidAt;
-        await store.put(item);
+    for (const id of ids) {
+      const existing = await SecureStore.get<Zakat>(ZAKAT_STORE, id);
+      if (existing) {
+        existing.isPaid = true;
+        existing.paidAt = new Date().toISOString();
+        await SecureStore.put<Zakat>(ZAKAT_STORE, existing);
       }
-    }));
-    await tx.done;
+    }
   },
 };
 
 const budgets = {
-    get: (id: string): Promise<Budget | undefined> => db.get(BUDGET_STORE, id),
-    upsert: async (budget: Budget): Promise<Budget> => {
-        await db.put(BUDGET_STORE, budget);
-        return budget;
-    },
-    list: (): Promise<Budget[]> => db.getAll(BUDGET_STORE),
+  get: (id: string): Promise<Budget | undefined> => SecureStore.get<Budget>(BUDGET_STORE, id),
+  upsert: async (budget: Budget): Promise<Budget> => {
+    await SecureStore.put<Budget>(BUDGET_STORE, budget);
+    return budget;
+  },
+  list: (): Promise<Budget[]> => SecureStore.list<Budget>(BUDGET_STORE),
 };
-
 
 const dbService = { init, clearAllData, accounts, transactions, debts, bills, zakat, budgets };
 export default dbService;
